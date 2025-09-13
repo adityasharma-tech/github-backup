@@ -30,7 +30,7 @@ const backupGithubRepos = asyncHandler(async (req, res, next) => {
   })
 
   for (const repo of respositoryListReq.data){
-    exec(`git clone https://${repo.owner.login}:${access_token}@github.com/${repo.full_name}`, (error, stdout)=>{
+    exec(`git clone https://${repo.owner.login}:${access_token}@github.com/${repo.full_name} ./repositories/${repo.full_name}`, (error, stdout)=>{
         console.log(error, stdout)
     })
   }

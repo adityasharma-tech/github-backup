@@ -11,6 +11,6 @@ const envSchema = zod_1.default.object({
     GITHUB_CLIENT_SECRET: zod_1.default.string(),
     GITHUB_REDIRECT_URL: zod_1.default.url()
 });
-const env = envSchema.parse(envSchema);
+const env = envSchema.parse(process.env);
 exports.env = env;
 //# sourceMappingURL=env.js.map
