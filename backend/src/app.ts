@@ -15,7 +15,9 @@ const app = express();
 app.use(express.json())
 app.use(express.urlencoded())
 app.use(cors({
-    origin: "http://localhost:5173"
+    origin: ['http://localhost:5473', 'http://localhost:5173'],
+    methods: ["POST", "GET", "OPTIONS"],
+    credentials: true
 }))
 app.use(cookieParser())
 app.use(morgan("combined"))

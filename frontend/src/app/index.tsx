@@ -25,13 +25,6 @@ export default function App() {
     })();
   }, []);
 
-  const handleBackup = useCallback(async () => {
-    await fetch("http://localhost:5473/api/backup-all-repo", {
-      method: "POST",
-      credentials: "include",
-    });
-  }, []);
-
   return (
     <main className="h-screen w-screen flex bg-neutral-100 justify-center items-center">
       <div className="border p-20 border-neutral-300 rounded-xl drop-shadow-lg bg-white">
@@ -50,15 +43,15 @@ export default function App() {
           </a>
         </div>
 
-        <button
-          disabled={!hasAccessToken}
-          onClick={handleBackup}
+        <a
+        download
+          href="http://localhost:5473/api/backup-all-repo"
           className="px-3 py-2 disabled:cursor-not-allowed disabled:hover:bg-neutral-50 bg-neutral-50 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 md:cursor-pointer mb-5"
         >
           Backup All Repository (Private Included)
-        </button>
+        </a>
 
-        <div>Your github is already added to backup queue.</div>
+        <div className="mt-5">Your github is already added to backup queue.</div>
         <div>We will mail you when your backup is ready.</div>
       </div>
     </main>

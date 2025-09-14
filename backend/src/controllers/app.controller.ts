@@ -1,41 +1,87 @@
-import { ApiResponse } from "../lib/api-response";
 import { asyncHandler } from "../lib/async-handler";
-import { exec } from "child_process"
-import axios, { AxiosHeaders } from "axios";
+import { Octokit } from "octokit";
+import { exec, spawn } from "child_process";
+import fs from "fs";
 
 const backupGithubRepos = asyncHandler(async (req, res, next) => {
   const access_token = req.cookies.access_token;
 
-  console.log(access_token)
+  console.log(access_token);
 
-  const headers = new AxiosHeaders();
-  headers.set("Authorization", "Bearer " + access_token);
-  headers.set("X-GitHub-Api-Version", "2022-11-28");
-  headers.set("Accept", "application/vnd.github+json");
-  const request = await axios.request({
-    headers,
-    url: "https://api.github.com/user",
+  const octokit = new Octokit({
+    auth: access_token,
   });
 
-  console.log(request.data);
-  
-  const respositoryListReq = await axios.request({
-    headers,
-    url: request.data.repos_url,
-    params: {
-        per_page: 100,
-        page: 1,
-        type: "private"
-    }
-  })
+  const userRequest = await octokit.request("GET /user", {
+    headers: {
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+  });
 
-  for (const repo of respositoryListReq.data){
-    exec(`git clone https://${repo.owner.login}:${access_token}@github.com/${repo.full_name} ./repositories/${repo.full_name}`, (error, stdout)=>{
-        console.log(error, stdout)
-    })
+  console.log(userRequest.data);
+
+  const username = userRequest.data.login;
+
+  const respositoryListReq = await octokit.request("GET /user/repos", {
+    headers: {
+      "X-GitHub-Api-Version": "2022-11-28",
+    },
+  });
+
+  const allPromises: Promise<void>[] = [];
+
+  for (const repo of respositoryListReq.data) {
+    allPromises.push(
+      new Promise<void>((resolve) => {
+        exec(
+          `git clone https://${repo.owner.login}:${access_token}@github.com/${repo.full_name} ./repositories/${username}/${repo.name}`,
+          (error) => {
+            console.log(`./repositories/${username}/${repo.name}`);
+            if (error) console.error(`Error occured`);
+            resolve();
+          }
+        );
+      })
+    );
   }
 
-  return res.status(200).json(new ApiResponse(200, null));
+  await Promise.all(allPromises);
+
+  await new Promise<void>((resolve, reject) => {
+    const zip = spawn(
+      "zip",
+      ["-r", `./archives/${username}.zip`, `./repositories/${username}/`],
+      {
+        stdio: "ignore",
+      }
+    );
+    zip.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(`zip process exited with code ${code}`));
+      } else {
+        resolve();
+      }
+    });
+  });
+
+  while (true) {
+    if (fs.existsSync(`./archives/${username}.zip`)) break;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  return res.download(
+    `./archives/${username}.zip`,
+    `${username}.zip`,
+    (err) => {
+      if (err) {
+        console.error("Download error:", err);
+      }
+    }
+  );
 });
 
-export { backupGithubRepos };
+const test = asyncHandler((req, res)=>{
+  return res.download('./archives/adityasharma-tech.zip')
+})
+
+export { backupGithubRepos, test };
