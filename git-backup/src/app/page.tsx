@@ -84,7 +84,7 @@ export default function Home() {
           </span>
         </div>
 
-        <div className="flex justify-center my-10">
+        <div className="flex justify-center w-full text-center my-10">
           <a
             aria-disabled={hasAccessToken}
             href={
@@ -98,13 +98,17 @@ export default function Home() {
           </a>
         </div>
 
+<div className="flex w-full">
+
+
         <button
           onClick={handleBackup}
-          className="px-3 py-2 disabled:hover:bg-neutral-50 bg-neutral-50 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 md:cursor-pointer mb-5"
+          className="px-3 py-2 mx-auto disabled:hover:bg-neutral-50 bg-neutral-50 border border-neutral-300 rounded-lg text-neutral-700 hover:bg-neutral-100 md:cursor-pointer mb-5"
         >
           {currentState == "ready" ? "Download Your Repository Backup (zip)" : "Backup All Repository (Private Included)"}
         </button>
 
+          </div>
         <div className="text-lg font-medium text-center">
           {currentState == "in-queue" ? "We are processing your request. It would take around 10-20 minutes. You can check in while to download your repo." : currentState == "ready" ? <span>Your github backup is ready to download.</span>  : currentState == "loading" ? "Loading...": "Make a backup of your whole github repository including private repositories. So you always have a copy of your precious code."}
         </div>
