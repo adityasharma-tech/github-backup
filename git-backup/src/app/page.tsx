@@ -78,8 +78,8 @@ export default function Home() {
   return (
     <main className="h-screen w-screen flex text-neutral-800 bg-neutral-100 justify-center items-center">
       <div className="border p-20 border-neutral-300 rounded-xl drop-shadow-lg bg-white">
-        <div>
-          <span className="font-bold text-xl text-center">
+        <div className="text-center">
+          <span className="font-bold text-xl text-center w-full">
             Backup all your gihub repository
           </span>
         </div>
