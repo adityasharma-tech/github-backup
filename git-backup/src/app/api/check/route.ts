@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   const queued = req.cookies.get("queued")?.value || "false";
 
   if (!access_token)
-    return NextResponse.json({ message: "Unauthorized" }, { status: 400 });
+    return  NextResponse.json({ status: null });
 
   const s3 = new S3Client({
     region: REGION,
