@@ -1,32 +1,27 @@
-service: instadeploy
+service: github-backup
 
 provider:
-    name: aws
-    runtime: nodejs22.x
-    stage: dev
-    region: ap-south-1
-    memorySize: 2048
-    timeout: 200
-    environment:
-        DATABASE_URL: ${env:DATABASE_URL}
-        AWS_PRIVATE_KEY: ${env:AWS_PRIVATE_KEY}
-    iamRoleStatements:
-        - Effect: 'Allow'
-          Action:
-              - s3:*
-              - ec2:*
-          Resource: '*'
+  name: aws
+  region: ap-south-1
+  ecr:
+    images:
+      gitbackupimg:
+        path: .
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:PutObject
+        - s3:GetObject
+      Resource:
+        - arn:aws:s3:::github-backup-lkjklasdlfkjasdf/uploads/*
 
 functions:
-    git-backup-worker:
-        handler: ./dist/handler.gitBackup
-        timeout: 200
-        description: sqs for deploy to deploy projects
-        events:
-            - sqs:
-                  arn: arn:aws:sqs:ap-south-1:818682288285:GitBackup
-                  batchSize: 1
-                  maximumBatchingWindow: 0
-
-plugins:
-    - serverless-dotenv-plugin
+  backup-worker:
+    image:
+      name: gitbackupimg
+    timeout: 200
+    description: sqs for deploy to deploy projects
+    ephemeralStorageSize: 2048
+    events:
+      - sqs:
+          arn: arn:aws:sqs:ap-south-1:818682288285:GitBackup

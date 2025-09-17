@@ -106,7 +106,7 @@ export default function Home() {
         </button>
 
         <div className="text-lg font-medium text-center">
-          {currentState == "in-queue" ? "We are processing your request. It would take around 10-20 minutes. You can check in while to download your repo." : currentState == "ready" ? <span>Your github backup is ready to download.</span>  : "Loading..."}
+          {currentState == "in-queue" ? "We are processing your request. It would take around 10-20 minutes. You can check in while to download your repo." : currentState == "ready" ? <span>Your github backup is ready to download.</span>  : currentState == "loading" ? "Loading...": "Make a backup of your whole github repository including private repositories. So you always have a copy of your precious code."}
         </div>
       </div>
     </main>
