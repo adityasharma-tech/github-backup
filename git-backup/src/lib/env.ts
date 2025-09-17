@@ -1,12 +1,11 @@
 import z from "zod"
 
 const envSchema = z.object({
-    PORT: z.number().default(5473),
-    GITHUB_CLIENT_ID: z.string(),
+    NEXT_PUBLIC_GITHUB_CLIENT_ID: z.string(),
     GITHUB_CLIENT_SECRET: z.string(),
-    GITHUB_REDIRECT_URL: z.url()
+    NEXT_PUBLIC_GITHUB_REDIRECT_URL: z.url()
 })
 
-const env = envSchema.parse(process.env);
+const env = envSchema.safeParse(process.env).data!;
 
 export { env }

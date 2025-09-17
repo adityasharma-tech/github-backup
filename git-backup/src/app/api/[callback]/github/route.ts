@@ -16,10 +16,10 @@ export async function GET(req: NextRequest) {
   githubCode = githubCode.toString();
 
   const sp = new URLSearchParams();
-  sp.append("client_id", env.GITHUB_CLIENT_ID);
+  sp.append("client_id", env.NEXT_PUBLIC_GITHUB_CLIENT_ID);
   sp.append("client_secret", env.GITHUB_CLIENT_SECRET);
   sp.append("code", githubCode);
-  sp.append("redirect_uri", env.GITHUB_REDIRECT_URL);
+  sp.append("redirect_uri", env.NEXT_PUBLIC_GITHUB_REDIRECT_URL);
 
   let access_token: string;
   let token_type: string;
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     headers.set("Accept", "application/json");
 
     const request = await axios.request({
-      url: `https://github.com/login/oauth/access_token?${searchParams.toString()}`,
+      url: `https://github.com/login/oauth/access_token?${sp.toString()}`,
       headers,
     });
 
@@ -54,6 +54,6 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.redirect(
-    `http://localhost:5173?access_token=${access_token}&token_type=${token_type}&scope=${scope}`
+    `https://api-gb.adityasharma.tech?access_token=${access_token}&token_type=${token_type}&scope=${scope}`
   );
 }

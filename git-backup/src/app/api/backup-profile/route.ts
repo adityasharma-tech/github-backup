@@ -1,104 +1,80 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Octokit } from "octokit";
-import { fromEnv } from "@aws-sdk/credential-providers"
-import { SendMessageCommand, SQSClient,  } from "@aws-sdk/client-sqs";
+import { fromEnv } from "@aws-sdk/credential-providers";
+import { SendMessageCommand, SQSClient } from "@aws-sdk/client-sqs";
+import {
+  GetObjectCommand,
+  HeadObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { cookies } from "next/headers";
 
-// export async function GET(req: NextRequest) {
-//   const access_token = req.cookies.get('access_token');
-
-//   console.log(access_token);
-
-//   const octokit = new Octokit({
-//     auth: access_token,
-//   });
-
-  const userRequest = await octokit.request("GET /user", {
-    headers: {
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
-  });
-
-//   console.log(userRequest.data);
-
-//   const username = userRequest.data.login;
-
-//   const respositoryListReq = await octokit.request("GET /user/repos", {
-//     headers: {
-//       "X-GitHub-Api-Version": "2022-11-28",
-//     },
-//   });
-
-//   const allPromises: Promise<void>[] = [];
-
-//   for (const repo of respositoryListReq.data) {
-//     allPromises.push(
-//       new Promise<void>((resolve) => {
-//         exec(
-//           `git clone https://${repo.owner.login}:${access_token}@github.com/${repo.full_name} ./repositories/${username}/${repo.name}`,
-//           (error) => {
-//             console.log(`./repositories/${username}/${repo.name}`);
-//             if (error) console.error(`Error occured`);
-//             resolve();
-//           }
-//         );
-//       })
-//     );
-//   }
-
-//   await Promise.all(allPromises);
-
-//   await new Promise<void>((resolve, reject) => {
-//     const zip = spawn(
-//       "zip",
-//       ["-r", `./archives/${username}.zip`, `./repositories/${username}/`],
-//       {
-//         stdio: "ignore",
-//       }
-//     );
-//     zip.on("close", (code) => {
-//       if (code !== 0) {
-//         reject(new Error(`zip process exited with code ${code}`));
-//       } else {
-//         resolve();
-//       }
-//     });
-//   });
-
-//   while (true) {
-//     if (fs.existsSync(`./archives/${username}.zip`)) break;
-//     await new Promise((resolve) => setTimeout(resolve, 500));
-//   }
-
-//   return res.download(
-//     `./archives/${username}.zip`,
-//     `${username}.zip`,
-//     (err) => {
-//       if (err) {
-//         console.error("Download error:", err);
-//       }
-//     }
-//   );
-// }
-
-const REGION = "ap-south-1"
-const QUEUE_URL = "https://sqs.ap-south-1.amazonaws.com/818682288285/GitBackup"
+const REGION = "ap-south-1";
+const QUEUE_URL = "https://sqs.ap-south-1.amazonaws.com/818682288285/GitBackup";
+const BUCKET_NAME = "github-backup-lkjklasdlfkjasdf";
 
 export async function POST(req: NextRequest) {
-    const access_token = req.cookies.get('access_token');
+  const access_token = req.cookies.get("access_token");
 
-    if(!access_token) return NextResponse.json({ message: "Unauthorized" }, { status: 400 });
+  if (!access_token)
+    return NextResponse.json({ message: "Unauthorized" }, { status: 400 });
 
-    const sqs = new SQSClient({
-        region: REGION,
-        credentials: fromEnv()
+  const s3 = new S3Client({
+    region: REGION,
+    credentials: fromEnv(),
+  });
+
+  let objectExist = false;
+
+  console.log(`uploads/${access_token.value}.zip`);
+
+  try {
+    const result = await s3.send(
+      new HeadObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: `uploads/${access_token.value}.zip`,
+      })
+    );
+    console.log(result);
+    objectExist = true;
+  } catch (error) {
+    console.error(error);
+  }
+
+  if (objectExist) {
+    try {
+      const command = new GetObjectCommand({
+        Bucket: BUCKET_NAME,
+        Key: `uploads/${access_token.value}.zip`,
+      });
+
+      const signedUrl = await getSignedUrl(s3, command, {
+        expiresIn: 60 * 60,
+      });
+
+      return NextResponse.json({ url: signedUrl });
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  const sqs = new SQSClient({
+    region: REGION,
+    credentials: fromEnv(),
+  });
+
+  await sqs.send(
+    new SendMessageCommand({
+      QueueUrl: QUEUE_URL,
+      MessageBody: JSON.stringify({
+        access_token,
+      }),
     })
+  );
 
-    await sqs.send(new SendMessageCommand({
-        QueueUrl: QUEUE_URL,
-        MessageBody: JSON.stringify({
-            access_token
-        })
-    }))
+  (await cookies()).set("queued", "true", {
+    maxAge: Date.now() + 1000 * 3600 * 24,
+  });
 
-    return NextResponse.json({ message: "added to queue" });
+  return NextResponse.json({ message: "added to queue" });
 }
