@@ -54,6 +54,6 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.redirect(
-    `https://api-gb.adityasharma.tech?access_token=${access_token}&token_type=${token_type}&scope=${scope}`
+    `https://git-backup.adityasharma.tech?access_token=${access_token}&token_type=${token_type}&scope=${scope}`
   );
 }
