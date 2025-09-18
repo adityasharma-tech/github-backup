@@ -1,7 +1,7 @@
 import fs from "fs";
 import { Octokit } from "octokit";
 import { SQSEvent } from "aws-lambda";
-import { exec, spawn } from "child_process";
+import { exec } from "child_process";
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import archiver from "archiver";
 
@@ -28,11 +28,32 @@ export const gitBackup = async (event: SQSEvent) => {
     });
 
     const username = userRequest.data.login;
-    const respositoryListReq = await octokit.request("GET /user/repos", {
-      headers: {
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-    });
+
+    async function getRepositoryList(page = 1) {
+      return (
+        await octokit.request("GET /user/repos", {
+          headers: {
+            "X-GitHub-Api-Version": "2022-11-28",
+          },
+          type: "all",
+          per_page: 100,
+          page,
+        })
+      ).data;
+    }
+
+    let currentPage = 1;
+
+    const repositories = [];
+
+    while (true) {
+      const repoList = await getRepositoryList(currentPage);
+      const nextRepoList = await getRepositoryList(currentPage + 1);
+      currentPage++;
+      if (nextRepoList.length <= 0) break;
+      else repositories.push(...nextRepoList);
+      repositories.push(...repoList);
+    }
 
     const allPromises: Promise<void>[] = [];
 
@@ -43,7 +64,7 @@ export const gitBackup = async (event: SQSEvent) => {
       });
     });
 
-    for (const repo of respositoryListReq.data) {
+    for (const repo of repositories) {
       allPromises.push(
         new Promise<void>((resolve) => {
           exec(

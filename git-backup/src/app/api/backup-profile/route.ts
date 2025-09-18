@@ -75,6 +75,5 @@ export async function POST(req: NextRequest) {
   (await cookies()).set("queued", "true", {
     maxAge: Date.now() + 1000 * 3600 * 24,
   });
-
   return NextResponse.json({ message: "added to queue" });
 }
