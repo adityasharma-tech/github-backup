@@ -92,6 +92,10 @@ export default function Home() {
     }
   };
 
+  React.useEffect(()=>{
+    setInterval(async ()=>await checkIt(), 10000);
+  }, [])
+
   return (
     <main className="h-screen w-screen flex text-neutral-800 bg-neutral-100 justify-center items-center">
       <div className="border p-20 border-neutral-300 max-h-[80vh] max-w-[50vw] rounded-xl drop-shadow-lg bg-white">
