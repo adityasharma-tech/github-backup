@@ -21,7 +21,7 @@ functions:
       name: gitbackupimg
     timeout: 200
     description: sqs for deploy to deploy projects
-    ephemeralStorageSize: 2048
+    ephemeralStorageSize: 5120
     events:
       - sqs:
           arn: arn:aws:sqs:ap-south-1:818682288285:GitBackup

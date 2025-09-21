@@ -55,6 +55,8 @@ export const gitBackup = async (event: SQSEvent) => {
       repositories.push(...repoList);
     }
 
+    console.log("Here are the libraries: ", repositories)
+
     const allPromises: Promise<void>[] = [];
 
     await new Promise<void>((resolve) => {
