@@ -1,3 +1,7 @@
+# "org" ensures this Service is used with the correct Serverless Framework Access Key.
+org: adityasharma
+# "app" enables Serverless Framework Dashboard features and sharing them with other Services.
+app: github-backup
 service: github-backup
 
 provider:
@@ -19,9 +23,11 @@ functions:
   backup-worker:
     image:
       name: gitbackupimg
-    timeout: 200
+    timeout: 899
+    memorySize: 3008
     description: sqs for deploy to deploy projects
     ephemeralStorageSize: 5120
     events:
       - sqs:
           arn: arn:aws:sqs:ap-south-1:818682288285:GitBackup
+          batchSize: 1

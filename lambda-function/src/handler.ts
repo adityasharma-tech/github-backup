@@ -1,9 +1,32 @@
-import fs from "fs";
+import { PassThrough } from "stream"
 import { Octokit } from "octokit";
 import { SQSEvent } from "aws-lambda";
-import { exec } from "child_process";
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { exec, execSync } from "child_process";
+import { S3Client } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 import archiver from "archiver";
+
+async function runWithConcurrency<T>(
+  items: T[],
+  fn: (item: T) => Promise<void>,
+  concurrency: number
+) {
+  const results: Promise<void>[] = [];
+  let index = 0;
+
+  async function worker() {
+    while (index < items.length) {
+      const current = items[index++];
+      await fn(current);
+    }
+  }
+
+  for (let i = 0; i < concurrency; i++) {
+    results.push(worker());
+  }
+
+  await Promise.all(results);
+}
 
 export const gitBackup = async (event: SQSEvent) => {
   for (const record of event.Records) {
@@ -28,6 +51,13 @@ export const gitBackup = async (event: SQSEvent) => {
     });
 
     const username = userRequest.data.login;
+
+    try {
+      const result = execSync("rm -r /tmp/*");
+      console.log(result.toString());
+    } catch (error) {
+      console.error("deleting file in /tmp/*", error);
+    }
 
     async function getRepositoryList(page = 1) {
       return (
@@ -55,9 +85,7 @@ export const gitBackup = async (event: SQSEvent) => {
       repositories.push(...repoList);
     }
 
-    console.log("Here are the libraries: ", repositories)
-
-    const allPromises: Promise<void>[] = [];
+    console.log("Here are the libraries: ", repositories);
 
     await new Promise<void>((resolve) => {
       exec(`mkdir /tmp/repositories /tmp/archives`, (error: any) => {
@@ -66,42 +94,23 @@ export const gitBackup = async (event: SQSEvent) => {
       });
     });
 
-    for (const repo of repositories) {
-      allPromises.push(
-        new Promise<void>((resolve) => {
+    await runWithConcurrency(
+      repositories,
+      async (repo) => {
+        await new Promise<void>((resolve) => {
           exec(
-            `git clone https://${repo.owner.login}:${access_token.value}@github.com/${repo.full_name} /tmp/repositories/${username}/${repo.name}`,
+            `git clone --depth 1 https://${repo.owner.login}:${access_token.value}@github.com/${repo.full_name} /tmp/repositories/${username}/${repo.name}`,
+            { timeout: 200_000 },
             (error: any) => {
               console.log(`/tmp/repositories/${username}/${repo.name}`);
               if (error) console.error(`Error occured`, error);
               resolve();
             }
           );
-        })
-      );
-    }
-
-    await Promise.all(allPromises);
-
-    await new Promise<void>((resolve, reject) => {
-      const output = fs.createWriteStream(`/tmp/archives/${username}.zip`);
-      const archive = archiver("zip", { zlib: { level: 9 } });
-
-      output.on("close", () => {
-        console.log(`Archive created: ${archive.pointer()} total bytes`);
-        resolve();
-      });
-      archive.on("error", (err) => reject(err));
-
-      archive.pipe(output);
-      archive.directory(`/tmp/repositories/${username}/`, false);
-      archive.finalize();
-    });
-
-    while (true) {
-      if (fs.existsSync(`/tmp/archives/${username}.zip`)) break;
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
+        });
+      },
+      10
+    );
 
     const s3 = new S3Client({
       region: "ap-south-1",
@@ -110,17 +119,31 @@ export const gitBackup = async (event: SQSEvent) => {
     const bucketName = "github-backup-lkjklasdlfkjasdf";
     const objectKey = `uploads/${access_token.value}.zip`;
 
-    const filepath = `/tmp/archives/${username}.zip`;
+    const archive = archiver("zip", { zlib: { level: 9 } });
+    const pass = new PassThrough();
 
-    const fileBody = fs.createReadStream(filepath);
+    archive.pipe(pass);
 
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: bucketName,
+    const upload = new Upload({
+      client: s3,
+      params: {
         Key: objectKey,
-        Body: fileBody,
-      })
-    );
+        Bucket: bucketName,
+        Body: pass,
+      },
+    });
+
+    archive.on("error", (err) => {
+      console.error(err);
+    });
+
+    archive.directory(`/tmp/repositories/${username}/`, false);
+
+    archive.finalize();
+
+    await upload.done();
+
+    console.log(`Uploaded archive: s3://${bucketName}/${objectKey}`);
   }
 
   return {

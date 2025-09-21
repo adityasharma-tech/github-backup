@@ -20,6 +20,17 @@ export default function Home() {
 
   const [loading, setLoading] = useState(false);
 
+  const checkIt = async () => {
+    try {
+        const req = await fetch("/api/check", {
+          method: "POST",
+        });
+        const res = await req.json();
+
+        setCurrentState(res.status);
+      } catch (error) {}
+  }
+
   React.useEffect(() => {
     (async () => {
       const searchParams = new URLSearchParams(window.location.search);
@@ -57,16 +68,7 @@ export default function Home() {
   }, []);
 
   React.useEffect(() => {
-    (async () => {
-      try {
-        const req = await fetch("/api/check", {
-          method: "POST",
-        });
-        const res = await req.json();
-
-        setCurrentState(res.status);
-      } catch (error) {}
-    })();
+    checkIt()
   }, []);
 
   const handleBackup = async () => {
@@ -81,14 +83,7 @@ export default function Home() {
       if ("url" in response)
         window.open(response.url, "_blank", "noopener,noreferrer");
 
-      (async () => {
-        const req = await fetch("/api/check", {
-          method: "POST",
-        });
-        const res = await req.json();
-
-        setCurrentState(res.status);
-      })();
+      await checkIt()
     } catch (error) {
       console.error(error);
       alert("Request Failed");
